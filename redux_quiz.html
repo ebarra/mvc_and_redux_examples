@@ -1,0 +1,267 @@
+<html>
+<head><title>MVC Example</title><meta charset="utf-8"></head>
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js" > </script>
+<script src="https://unpkg.com/redux@latest/dist/redux.min.js"></script>
+
+<script type="text/javascript">
+
+  //CONSTANTS
+  const EDIT_QUIZ = "EDIT_QUIZ";
+  const UPDATE_QUIZ = "UPDATE_QUIZ";
+  const DELETE_QUIZ = "DELETE_QUIZ";
+  const NEW_QUIZ = "NEW_QUIZ";
+  const PLAY_QUIZ = "PLAY_QUIZ";
+  const CHECK_QUIZ = "CHECK_QUIZ";
+  const CREATE_QUIZ = "CREATE_QUIZ";
+  const RESET_QUIZZES = "RESET_QUIZZES";
+  const BACK = "BACK";
+
+  const ROUTE_INDEX = "index";
+  const ROUTE_NEW = "new";
+  const ROUTE_EDIT = "edit";
+  const ROUTE_PLAY = "play";
+
+  const INITIAL_STATE = {
+    route: ROUTE_INDEX,
+    index : 0,
+    message: "",
+    quizzes: [
+          { question: "Capital of Italy",    answer: "Rome" },
+          { question: "Capital of France",   answer: "Paris" },
+          { question: "Capital of Spain",    answer: "Madrid" },
+          { question: "Capital of Portugal", answer: "Lisbon" }
+  ]};
+
+  //localStorage.quizzes = localStorage.quizzes || initial_quizzes;
+
+
+  //ACTIONS
+  function editQuiz(index) {
+    return {
+      type: EDIT_QUIZ,
+      index
+    }
+  }
+
+  function updateQuiz(index, question, answer) {
+    return {
+      type: UPDATE_QUIZ,
+      index,
+      question,
+      answer
+    }
+  }
+
+  function deleteQuiz(index) {
+    return {
+      type: DELETE_QUIZ,
+      index
+    }
+  }
+
+  function newQuiz() {
+    return {
+      type: NEW_QUIZ
+    }
+  }
+
+  function playQuiz(index){
+    return {
+      type: PLAY_QUIZ,
+      index
+    }
+  }
+
+  function checkQuiz(index, answer){
+    return {
+      type: CHECK_QUIZ,
+      index,
+      answer
+    }
+  }
+
+  function createQuiz(question, answer) {
+    return {
+      type: CREATE_QUIZ,
+      question,
+      answer
+    }
+  }
+
+  function resetQuizzes() {
+    return {
+      type: RESET_QUIZZES
+    }
+  }
+
+  function back(){
+    return {
+      type: BACK
+    }
+  }
+
+
+  //REDUCERS
+
+  function quizApp(state, action) {
+    if (typeof state === 'undefined') {
+      return INITIAL_STATE;
+    }
+
+    switch (action.type) {
+      case EDIT_QUIZ:
+        return Object.assign({}, state, {
+          route: ROUTE_EDIT,
+          index: action.index
+        });
+      case UPDATE_QUIZ:
+        return Object.assign({}, state, {
+          route: ROUTE_INDEX,
+          quizzes: state.quizzes.map((quiz, index) => {
+            if (index === action.index) {
+              return { question: action.question,    answer: action.answer }
+            }
+            return quiz;
+          })
+        });
+      case PLAY_QUIZ:
+        return Object.assign({}, state, {
+          route: ROUTE_PLAY,
+          index: action.index,
+          message: ""
+        });
+      case CHECK_QUIZ:
+        let message = (state.quizzes[action.index].answer===action.answer) ?
+              `Yes, "${action.answer}" is the ${state.quizzes[action.index].question}`
+            : `No, "${action.answer}" is not the ${state.quizzes[action.index].question}`;
+        return Object.assign({}, state, {
+          route: ROUTE_PLAY,
+          index: action.index,
+          message: message
+        });
+      case BACK:
+        return Object.assign({}, state, {
+          route: ROUTE_INDEX,
+          message: ""
+        });
+      case DELETE_QUIZ:
+        return Object.assign({}, state, {
+          quizzes: [
+              ...state.quizzes.slice(0, action.index),
+              ...state.quizzes.slice(action.index + 1)
+          ]
+        });
+      case RESET_QUIZZES:
+        return INITIAL_STATE;
+      case NEW_QUIZ:
+        return Object.assign({}, state, {
+          route: ROUTE_NEW
+        });
+      case CREATE_QUIZ:
+        return Object.assign({}, state, {
+          route: ROUTE_INDEX,
+          quizzes: [
+            ...state.quizzes,
+            {
+              question: action.question,
+              answer: action.answer
+            }
+        ]});
+      default:
+        console.log("ERROR: unknown action. It was type: " + action.type);
+        return state;
+    }
+
+  }
+
+  //STORE
+  const store = Redux.createStore(quizApp)
+
+  //VIEWS - RENDER
+  function render() {
+    let state = store.getState();
+    switch (state.route) {
+      case ROUTE_INDEX:
+        $('#main').html(index(state.quizzes));
+        return;
+      case ROUTE_EDIT:
+        $('#main').html(quizForm('Edit Quiz', 'update', state.index, state.quizzes[state.index].question, state.quizzes[state.index].answer));
+        return;
+      case ROUTE_PLAY:
+        $('#main').html(play(state.index, state.quizzes[state.index].question));
+        if(state.message!==""){
+          $('#msg').html(state.message);
+        }
+        return;
+      case ROUTE_NEW:
+        $('#main').html(quizForm('Create Quiz', 'create', 0, '', ''));
+        return;
+      default:
+        console.log("ERROR: Route not known. It was: " + state.route);
+        return;
+    }
+  }
+
+    // MODEL
+
+
+    // VIEWs
+
+    const index = (quizzes) => quizzes.reduce((ac, quiz, id) =>
+        ac +=`<div><span class="play"   quizid="${id}">${quiz.question}</span>
+                 <button class="edit"   quizid="${id}">Edit</button>
+                 <button class="delete" quizid="${id}">Delete</button>
+            </div>\n`,
+            ""
+        )
+      + `<button class="new">  New Quiz</button>
+         <button class="reset">Reset Quizzes</button>`;
+
+    const play = (id, question) =>
+    `   ${question}:
+        <p>
+            <input  type="text" id="answer" placeholder="Answer" >
+            <button class="check" quizid="${id}">Check</button>
+            <p>
+                <div id='msg'></div>
+            </p>
+        </p>
+        <button class="index">Go back</button>
+    `;
+
+    const quizForm = (msg, event, id, question, answer) =>
+    `   ${msg}:
+        <p>
+            <input  type="text" id="question" value="${question}" placeholder="Question" >
+            <input  type="text" id="answer"   value="${answer}"   placeholder="Answer" >
+            <button class="${event}" quizid="${id}">${event}</button>
+        </p>
+        <button class="index">Go back</button>
+    `;
+
+      // ROUTER
+
+    const addEvents = ()=> {
+      $(document).on('click','.index',  () => store.dispatch(back()));
+      $(document).on('click','.edit',   (e)=> store.dispatch(editQuiz( Number($(e.target).attr("quizid"))) ));
+      $(document).on('click','.update', (e)=> store.dispatch(updateQuiz( Number($(e.target).attr("quizid")), $('#question').val(), $('#answer').val())) );
+      $(document).on('click','.play',   (e)=> store.dispatch(playQuiz(Number($(e.target).attr("quizid")))));
+      $(document).on('click','.check',  (e)=> store.dispatch(checkQuiz(Number($(e.target).attr("quizid")),$('#answer').val())));
+      $(document).on('click','.delete', (e)=> store.dispatch(deleteQuiz(Number($(e.target).attr("quizid"))) ));
+      $(document).on('click','.reset',  () => store.dispatch(resetQuizzes()));
+      $(document).on('click','.new',    () => store.dispatch(newQuiz()));
+      $(document).on('click','.create', () => store.dispatch(createQuiz($('#question').val(), $('#answer').val())) );
+    }
+
+    $(function(){
+      addEvents();
+      render();
+      store.subscribe(render);
+    });
+</script>
+</head>
+<body>
+    <h1>MVC: Quizzes</h1>
+    <div id="main"><div>
+</body>
+</html>
